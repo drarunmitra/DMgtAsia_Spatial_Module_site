@@ -1,0 +1,1667 @@
+[
+  {
+    "objectID": "exercises/SIR_SMR_assignment.html",
+    "href": "exercises/SIR_SMR_assignment.html",
+    "title": "Mapmaking Exercise",
+    "section": "",
+    "text": "Explore non-spatial data\n\nkerala_covid_cases_df |&gt; glimpse()\n\nRows: 56\nColumns: 4\n$ Wave     &lt;chr&gt; \"First\", \"First\", \"First\", \"First\", \"First\", \"First\", \"First\"…\n$ District &lt;chr&gt; \"Alappuzha\", \"Ernakulam\", \"Idukki\", \"Kannur\", \"Kasaragod\", \"K…\n$ Cases    &lt;dbl&gt; 82076, 130735, 29449, 59719, 32277, 92640, 84556, 128970, 123…\n$ Deaths   &lt;dbl&gt; 406, 456, 48, 320, 111, 338, 217, 508, 449, 177, 131, 878, 49…\n\n\n\n\nCreate a Total Population column\n\n# Lets create a total population column\nkerala_district_sf &lt;- kerala_district_sf |&gt; \n  mutate(top_pop = sum(pop_2020, na.rm = T))\n\n\n\nVisualise the spatial files\n\nkerala_district_sf |&gt; \n  ggplot() +\n  geom_sf()\n\n\n\n\n\n\n\n\n\n\nCreate a choropleth map based on the population of the district\n\nkerala_district_sf |&gt; \n  ggplot() +\n  geom_sf(aes(fill = pop_2020)) +\n  scale_fill_distiller(palette = \"Spectral\")\n\n\n\n\n\n\n\n\n\n\nJoin both the spatial and non-spatial data\n\n# Step 1: Check if the district names are given correctly\n# Check if the district names in both the datasets are the same\n(kerala_covid_cases_df |&gt; distinct(District) |&gt; pull(District)) %in% (kerala_district_sf |&gt; distinct(distname) |&gt; pull(distname))\n\n [1] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE\n\n# Step 2: Reshape your data\nkerala_covid_cases_df_reshaped &lt;- kerala_covid_cases_df |&gt; \n  pivot_wider(names_from = Wave, values_from = c(Cases, Deaths))\n\n# Step 3: Identify the common variable in both the datasets (here it is `distname` and `District`)\nkerala_district_joined_sf &lt;- left_join(kerala_district_sf, kerala_covid_cases_df_reshaped, by = c(\"distname\" = \"District\"))\n\n\n\nASSIGNMENTS\n\n1. Create a new variable named estimating the standarized incidence rate.\n(SIR can be estimated by SIR = cases / ((total_cases / total_pop) * pop) )\n\njoined_df &lt;- kerala_covid_cases_df |&gt; \n  left_join(kerala_district_sf |&gt; st_drop_geometry(),\n            by = c(\"District\" = \"distname\")) |&gt; \n  group_by(Wave) |&gt; \n  mutate(SIR = Cases / ((sum(Cases)/ top_pop) * pop_2020)) |&gt; \n  ungroup()\n\nkerala_district_sf &lt;- kerala_district_sf |&gt; left_join(joined_df |&gt; select(District, SIR, Wave) |&gt; rename(distname = District))\n \n\nkerala_district_sf |&gt; \n  ggplot() + \n  geom_sf(aes(fill = SIR))  +\n  scale_fill_distiller(palette = \"Spectral\") +\n  facet_wrap(~Wave)\n\n\n\n\n\n\n\n\n\n\n2. Create a new variable named estimating the standarized motality rate.\n(SMR can be estimated by SMR = deaths / ((total_deaths / total_pop) * pop) )\n\n# Write the code here\n\n\n\n3. Plot a choropleth map of Cases for each of the wave\n\n# Write the code here\n\n\n\n4. Plot a choropleth map of Deaths for each of the wave\n\n# Write the code here\n\n\n\n5. Plot a choropleth map of SIR for each of the wave\n\n# Write the code here\n\n\n\n6. Plot a choropleth map of SMR for each of the wave\n\n# Write the code here",
+    "crumbs": [
+      "Home",
+      "Session-IV · Analysis & Clustering",
+      "SIR / SMR: Kerala COVID-19"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html",
+    "href": "session3-intro-sf.html",
+    "title": "Introduction to the sf Package",
+    "section": "",
+    "text": "sf implements Simple Features, the ISO standard for representing geometry.\nAn sf object is a data frame with a special geometry column.\nSo spatial data is just tidy data with a place attached: one row per feature, columns of attributes, plus geometry.\n\n\n\nLive R cells on this page run in your browser via webR. The first cell takes a few seconds while sf loads; after that they are quick.",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#the-simple-features-standard",
+    "href": "session3-intro-sf.html#the-simple-features-standard",
+    "title": "Introduction to the sf Package",
+    "section": "",
+    "text": "sf implements Simple Features, the ISO standard for representing geometry.\nAn sf object is a data frame with a special geometry column.\nSo spatial data is just tidy data with a place attached: one row per feature, columns of attributes, plus geometry.\n\n\n\nLive R cells on this page run in your browser via webR. The first cell takes a few seconds while sf loads; after that they are quick.",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#geometry-types",
+    "href": "session3-intro-sf.html#geometry-types",
+    "title": "Introduction to the sf Package",
+    "section": "Geometry types",
+    "text": "Geometry types\n\nPOINT a single location (a clinic, a case).\nLINESTRING a path (a road, a river).\nPOLYGON an area (a district, a PHC catchment).\nEach has a MULTI form (MULTIPOLYGON for a state made of many parts).",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#build-an-sf-object-live",
+    "href": "session3-intro-sf.html#build-an-sf-object-live",
+    "title": "Introduction to the sf Package",
+    "section": "Build an sf object (live)",
+    "text": "Build an sf object (live)\nPress Run. We make points for four cities, then attach geometry.\n\n\n\n\n\n\n\n\nNote the geometry column and the printed CRS header.",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#quiz-making-an-sf-object",
+    "href": "session3-intro-sf.html#quiz-making-an-sf-object",
+    "title": "Introduction to the sf Package",
+    "section": "Quiz: making an sf object",
+    "text": "Quiz: making an sf object\n\nviewof q1 = Inputs.radio(\n  [\"st_read()\", \"st_as_sf()\", \"st_transform()\", \"st_crs()\"],\n  { label: \"Which function converts a data frame with lon/lat columns into an sf object?\" }\n);\nhtml`${q1 == null ? \"\" : q1 === \"st_as_sf()\" ? \"&lt;strong&gt;Correct.&lt;/strong&gt; st_as_sf() turns a data frame with coordinate columns into an sf object.\" : \"&lt;em&gt;Not quite.&lt;/em&gt; Which function turns lon/lat columns into geometry?\"}`",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#coordinate-reference-systems",
+    "href": "session3-intro-sf.html#coordinate-reference-systems",
+    "title": "Introduction to the sf Package",
+    "section": "Coordinate reference systems",
+    "text": "Coordinate reference systems\n\nA CRS tells R what the coordinates mean.\nGeodetic (EPSG:4326, WGS 84): longitude/latitude in degrees. Good for storage and web maps.\nProjected (a UTM zone such as EPSG:32643): metres on a flat plane. Needed for distances and areas.",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#inspect-and-transform-live",
+    "href": "session3-intro-sf.html#inspect-and-transform-live",
+    "title": "Introduction to the sf Package",
+    "section": "Inspect and transform (live)",
+    "text": "Inspect and transform (live)\n\n\n\n\n\n\n\n\nThe numbers change from degrees to metres after st_transform().",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#quiz-what-is-epsg4326",
+    "href": "session3-intro-sf.html#quiz-what-is-epsg4326",
+    "title": "Introduction to the sf Package",
+    "section": "Quiz: what is EPSG:4326?",
+    "text": "Quiz: what is EPSG:4326?\n\nviewof q2 = Inputs.radio(\n  [\"Geodetic, in degrees\", \"Projected, in metres\", \"Always a UTM zone\", \"An equal-area projection\"],\n  { label: \"EPSG:4326 (WGS 84) is...\" }\n);\nhtml`${q2 == null ? \"\" : q2 === \"Geodetic, in degrees\" ? \"&lt;strong&gt;Correct.&lt;/strong&gt; EPSG:4326 (WGS 84) is geodetic: longitude/latitude in degrees.\" : \"&lt;em&gt;Try again.&lt;/em&gt; 4326 is the familiar lon/lat system.\"}`",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#plot-an-sf-object-live",
+    "href": "session3-intro-sf.html#plot-an-sf-object-live",
+    "title": "Introduction to the sf Package",
+    "section": "Plot an sf object (live)",
+    "text": "Plot an sf object (live)\n\n\n\n\n\n\n\n\ngeom_sf() reads the geometry column directly. The same layer draws points, lines, or polygons.",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#reading-spatial-files",
+    "href": "session3-intro-sf.html#reading-spatial-files",
+    "title": "Introduction to the sf Package",
+    "section": "Reading spatial files",
+    "text": "Reading spatial files\nIn RStudio you read a shapefile or GeoJSON from disk:\nlibrary(sf)\nlibrary(here)\nindia &lt;- st_read(here(\"spatial_files\", \"India_State_Boundary.shp\"))\nst_crs(india)\nYou do this in Exercise 1. We keep file reading in RStudio because the data files are large for a browser session.",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#what-runs-live-and-what-does-not",
+    "href": "session3-intro-sf.html#what-runs-live-and-what-does-not",
+    "title": "Introduction to the sf Package",
+    "section": "What runs live, and what does not",
+    "text": "What runs live, and what does not\n\nLive in the browser (webR): sf core, st_as_sf, st_crs, st_transform, geom_sf.\nRun in RStudio (static here):\n\nRaster extraction (exactextractr, raster) in Exercise 3.\nGeocoding (tidygeocoder) in Exercise 4.\nSpatial weights and clustering (spdep, rgeoda, Moran’s I, LISA) in Session-IV.\n\n\nThese packages are not yet built for WebAssembly, so they stay in the desktop exercises.",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#hands-on-for-this-session",
+    "href": "session3-intro-sf.html#hands-on-for-this-session",
+    "title": "Introduction to the sf Package",
+    "section": "Hands-on for this session",
+    "text": "Hands-on for this session\n\nExercise 1 load and plot India shapefiles; check and transform CRS.\nExercise 2 a medical-college choropleth; joins and case_when name harmonisation.\nExercise 3 raster extraction (population per state).\nExercise 4 geocoding medical colleges.\n\nEach is an R script you run in RStudio.",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "session3-intro-sf.html#recap",
+    "href": "session3-intro-sf.html#recap",
+    "title": "Introduction to the sf Package",
+    "section": "Recap",
+    "text": "Recap\n\nsf is tidy data with a geometry column.\nGeometry types: point, line, polygon, and their multi forms.\nst_as_sf builds geometry; st_crs reads it; st_transform reprojects.\ngeom_sf maps it.\nHeavier tools (raster, geocoding, clustering) run in RStudio and in Session-IV.",
+    "crumbs": [
+      "Home",
+      "Session-III · Intro to sf",
+      "Introduction to sf (live)"
+    ]
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#the-simple-features-standard",
+    "href": "slides-session3-intro-sf.html#the-simple-features-standard",
+    "title": "Introduction to the sf Package",
+    "section": "The Simple Features standard",
+    "text": "The Simple Features standard\n\nsf implements Simple Features, the ISO standard for representing geometry.\nAn sf object is a data frame with a special geometry column.\nSo spatial data is just tidy data with a place attached: one row per feature, columns of attributes, plus geometry.\n\n\n\nLive R cells on this page run in your browser via webR. The first cell takes a few seconds while sf loads; after that they are quick."
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#geometry-types",
+    "href": "slides-session3-intro-sf.html#geometry-types",
+    "title": "Introduction to the sf Package",
+    "section": "Geometry types",
+    "text": "Geometry types\n\nPOINT a single location (a clinic, a case).\nLINESTRING a path (a road, a river).\nPOLYGON an area (a district, a PHC catchment).\nEach has a MULTI form (MULTIPOLYGON for a state made of many parts)."
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#build-an-sf-object-live",
+    "href": "slides-session3-intro-sf.html#build-an-sf-object-live",
+    "title": "Introduction to the sf Package",
+    "section": "Build an sf object (live)",
+    "text": "Build an sf object (live)\nPress Run. We make points for four cities, then attach geometry.\n\n\n\n\n\n\n\n\nNote the geometry column and the printed CRS header."
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#quiz-making-an-sf-object",
+    "href": "slides-session3-intro-sf.html#quiz-making-an-sf-object",
+    "title": "Introduction to the sf Package",
+    "section": "Quiz: making an sf object",
+    "text": "Quiz: making an sf object\n\nviewof q1 = Inputs.radio(\n  [\"st_read()\", \"st_as_sf()\", \"st_transform()\", \"st_crs()\"],\n  { label: \"Which function converts a data frame with lon/lat columns into an sf object?\" }\n);\nhtml`${q1 == null ? \"\" : q1 === \"st_as_sf()\" ? \"&lt;strong&gt;Correct.&lt;/strong&gt; st_as_sf() turns a data frame with coordinate columns into an sf object.\" : \"&lt;em&gt;Not quite.&lt;/em&gt; Which function turns lon/lat columns into geometry?\"}`"
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#coordinate-reference-systems",
+    "href": "slides-session3-intro-sf.html#coordinate-reference-systems",
+    "title": "Introduction to the sf Package",
+    "section": "Coordinate reference systems",
+    "text": "Coordinate reference systems\n\nA CRS tells R what the coordinates mean.\nGeodetic (EPSG:4326, WGS 84): longitude/latitude in degrees. Good for storage and web maps.\nProjected (a UTM zone such as EPSG:32643): metres on a flat plane. Needed for distances and areas."
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#inspect-and-transform-live",
+    "href": "slides-session3-intro-sf.html#inspect-and-transform-live",
+    "title": "Introduction to the sf Package",
+    "section": "Inspect and transform (live)",
+    "text": "Inspect and transform (live)\n\n\n\n\n\n\n\n\nThe numbers change from degrees to metres after st_transform()."
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#quiz-what-is-epsg4326",
+    "href": "slides-session3-intro-sf.html#quiz-what-is-epsg4326",
+    "title": "Introduction to the sf Package",
+    "section": "Quiz: what is EPSG:4326?",
+    "text": "Quiz: what is EPSG:4326?\n\nviewof q2 = Inputs.radio(\n  [\"Geodetic, in degrees\", \"Projected, in metres\", \"Always a UTM zone\", \"An equal-area projection\"],\n  { label: \"EPSG:4326 (WGS 84) is...\" }\n);\nhtml`${q2 == null ? \"\" : q2 === \"Geodetic, in degrees\" ? \"&lt;strong&gt;Correct.&lt;/strong&gt; EPSG:4326 (WGS 84) is geodetic: longitude/latitude in degrees.\" : \"&lt;em&gt;Try again.&lt;/em&gt; 4326 is the familiar lon/lat system.\"}`"
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#plot-an-sf-object-live",
+    "href": "slides-session3-intro-sf.html#plot-an-sf-object-live",
+    "title": "Introduction to the sf Package",
+    "section": "Plot an sf object (live)",
+    "text": "Plot an sf object (live)\n\n\n\n\n\n\n\n\ngeom_sf() reads the geometry column directly. The same layer draws points, lines, or polygons."
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#reading-spatial-files",
+    "href": "slides-session3-intro-sf.html#reading-spatial-files",
+    "title": "Introduction to the sf Package",
+    "section": "Reading spatial files",
+    "text": "Reading spatial files\nIn RStudio you read a shapefile or GeoJSON from disk:\nlibrary(sf)\nlibrary(here)\nindia &lt;- st_read(here(\"spatial_files\", \"India_State_Boundary.shp\"))\nst_crs(india)\nYou do this in Exercise 1. We keep file reading in RStudio because the data files are large for a browser session."
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#what-runs-live-and-what-does-not",
+    "href": "slides-session3-intro-sf.html#what-runs-live-and-what-does-not",
+    "title": "Introduction to the sf Package",
+    "section": "What runs live, and what does not",
+    "text": "What runs live, and what does not\n\nLive in the browser (webR): sf core, st_as_sf, st_crs, st_transform, geom_sf.\nRun in RStudio (static here):\n\nRaster extraction (exactextractr, raster) in Exercise 3.\nGeocoding (tidygeocoder) in Exercise 4.\nSpatial weights and clustering (spdep, rgeoda, Moran’s I, LISA) in Session-IV.\n\n\nThese packages are not yet built for WebAssembly, so they stay in the desktop exercises."
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#hands-on-for-this-session",
+    "href": "slides-session3-intro-sf.html#hands-on-for-this-session",
+    "title": "Introduction to the sf Package",
+    "section": "Hands-on for this session",
+    "text": "Hands-on for this session\n\nExercise 1 load and plot India shapefiles; check and transform CRS.\nExercise 2 a medical-college choropleth; joins and case_when name harmonisation.\nExercise 3 raster extraction (population per state).\nExercise 4 geocoding medical colleges.\n\nEach is an R script you run in RStudio."
+  },
+  {
+    "objectID": "slides-session3-intro-sf.html#recap",
+    "href": "slides-session3-intro-sf.html#recap",
+    "title": "Introduction to the sf Package",
+    "section": "Recap",
+    "text": "Recap\n\nsf is tidy data with a geometry column.\nGeometry types: point, line, polygon, and their multi forms.\nst_as_sf builds geometry; st_crs reads it; st_transform reprojects.\ngeom_sf maps it.\nHeavier tools (raster, geocoding, clustering) run in RStudio and in Session-IV."
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html",
+    "href": "session2-1-spatial-visualization.html",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "",
+    "text": "In spatial analysis, the map is the primary instrument.\nA good map encodes a variable so the eye can read pattern, outliers, and gaps.\nBefore any statistic, we look.\n\n\n\nThe map is to spatial analysis what the histogram is to ordinary EDA.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html#why-the-map-comes-first",
+    "href": "session2-1-spatial-visualization.html#why-the-map-comes-first",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "",
+    "text": "In spatial analysis, the map is the primary instrument.\nA good map encodes a variable so the eye can read pattern, outliers, and gaps.\nBefore any statistic, we look.\n\n\n\nThe map is to spatial analysis what the histogram is to ordinary EDA.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html#cartographic-principles",
+    "href": "session2-1-spatial-visualization.html#cartographic-principles",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Cartographic Principles",
+    "text": "Cartographic Principles\nGeoSWG best practices for public health cartography:\n\nVisual contrast\nLegibility\nFigure-Ground Orientation\nHierarchical Organization\nBalance\n\nThese keep map products high-quality and consistent across a team.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html#design-principles-in-practice",
+    "href": "session2-1-spatial-visualization.html#design-principles-in-practice",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Design Principles in Practice",
+    "text": "Design Principles in Practice",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html#good-vs-poor-design",
+    "href": "session2-1-spatial-visualization.html#good-vs-poor-design",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Good vs Poor Design",
+    "text": "Good vs Poor Design",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html#cartographic-guidelines-for-public-health",
+    "href": "session2-1-spatial-visualization.html#cartographic-guidelines-for-public-health",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Cartographic Guidelines for Public Health",
+    "text": "Cartographic Guidelines for Public Health\n\n\n\nSource: CDC, Atlanta\nMap elements:\n\nTitle and borders\nNorth arrow / graticule / scale\nInset maps\nLabels and legend\n\nOther elements:\n\nData sources, dates, projection\n\n\n\n\nhttps://www.cdc.gov/dhdsp/maps/gisx/resources/cartographic_guidelines.pdf",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html#the-choropleth",
+    "href": "session2-1-spatial-visualization.html#the-choropleth",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "The Choropleth",
+    "text": "The Choropleth\n\nA thematic map in which values of a variable are encoded with a colour gradient.\n\n\nThe spatial counterpart of the histogram.\nThree choices decide whether it informs or misleads:\n\nWhat you map: rates, not raw counts\nHow you classify: the breaks (quantile, equal-interval, Jenks)\nWhich colours: sequential vs diverging, colour-blind safe",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html#rates-not-counts",
+    "href": "session2-1-spatial-visualization.html#rates-not-counts",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Rates, not counts",
+    "text": "Rates, not counts\n\nCounts mostly track population size, so a count map is often just a population map.\nMap rates (per 1000, per 100k) or proportions to compare places fairly.\nSmall-population areas give unstable rates: a single case swings them. Note this when you read the map.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html#colour-classification-accessibility",
+    "href": "session2-1-spatial-visualization.html#colour-classification-accessibility",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Colour, classification, accessibility",
+    "text": "Colour, classification, accessibility\n\nSequential palette for low-to-high; diverging for departure from a midpoint.\nUse colour-blind-safe palettes (viridis) and keep classes few (4 to 6).\nThe same data with different breaks tells different stories: always state the scheme.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html#a-map-is-spatial-data",
+    "href": "session2-1-spatial-visualization.html#a-map-is-spatial-data",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "A map is spatial data",
+    "text": "A map is spatial data\n\nlibrary(sf)\nlibrary(tidyverse)\nlibrary(here)\n\ndistricts &lt;- read_rds(here(\"spatial_files\", \"india_district_sf.rds\"))\n\nggplot(districts) +\n  geom_sf(linewidth = 0.05, fill = \"grey95\", colour = \"grey40\") +\n  theme_void()\n\n\n\n\n\n\n\n\nDistrict polygons read with sf. Geometry plus attributes is all we need to start mapping.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html#building-a-choropleth-pattern-to-reuse",
+    "href": "session2-1-spatial-visualization.html#building-a-choropleth-pattern-to-reuse",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Building a choropleth (pattern to reuse)",
+    "text": "Building a choropleth (pattern to reuse)\n\ndistricts |&gt;                                  # an sf object\n  left_join(indicator_df, by = \"district\") |&gt; # attach the variable\n  ggplot() +\n  geom_sf(aes(fill = stunting), colour = \"white\", linewidth = 0.1) +\n  scale_fill_viridis_c(option = \"magma\", direction = -1) +\n  theme_void()\n\nYou build exactly this in Exercise 6 (NFHS stunting). The same recipe drives the maps in the rest of the module.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "session2-1-spatial-visualization.html#recap",
+    "href": "session2-1-spatial-visualization.html#recap",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Recap",
+    "text": "Recap\n\nThe map is the first instrument: design it with care (contrast, hierarchy, honest rates, safe colour).\nChoropleth choices: what (rates not counts), how (breaks), which (colour).\nOne sf + ggplot2 recipe builds every map in the module.\nNext: Exploratory Spatial Data Analysis.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Spatial Data Visualization & Cartography"
+    ]
+  },
+  {
+    "objectID": "slides-session2-1-spatial-visualization.html#why-the-map-comes-first",
+    "href": "slides-session2-1-spatial-visualization.html#why-the-map-comes-first",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Why the map comes first",
+    "text": "Why the map comes first\n\nIn spatial analysis, the map is the primary instrument.\nA good map encodes a variable so the eye can read pattern, outliers, and gaps.\nBefore any statistic, we look.\n\n\n\nThe map is to spatial analysis what the histogram is to ordinary EDA."
+  },
+  {
+    "objectID": "slides-session2-1-spatial-visualization.html#cartographic-principles",
+    "href": "slides-session2-1-spatial-visualization.html#cartographic-principles",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Cartographic Principles",
+    "text": "Cartographic Principles\nGeoSWG best practices for public health cartography:\n\nVisual contrast\nLegibility\nFigure-Ground Orientation\nHierarchical Organization\nBalance\n\nThese keep map products high-quality and consistent across a team."
+  },
+  {
+    "objectID": "slides-session2-1-spatial-visualization.html#design-principles-in-practice",
+    "href": "slides-session2-1-spatial-visualization.html#design-principles-in-practice",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Design Principles in Practice",
+    "text": "Design Principles in Practice"
+  },
+  {
+    "objectID": "slides-session2-1-spatial-visualization.html#good-vs-poor-design",
+    "href": "slides-session2-1-spatial-visualization.html#good-vs-poor-design",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Good vs Poor Design",
+    "text": "Good vs Poor Design"
+  },
+  {
+    "objectID": "slides-session2-1-spatial-visualization.html#cartographic-guidelines-for-public-health",
+    "href": "slides-session2-1-spatial-visualization.html#cartographic-guidelines-for-public-health",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Cartographic Guidelines for Public Health",
+    "text": "Cartographic Guidelines for Public Health\n\n\n\nSource: CDC, Atlanta\nMap elements:\n\nTitle and borders\nNorth arrow / graticule / scale\nInset maps\nLabels and legend\n\nOther elements:\n\nData sources, dates, projection\n\n\n\n\nhttps://www.cdc.gov/dhdsp/maps/gisx/resources/cartographic_guidelines.pdf"
+  },
+  {
+    "objectID": "slides-session2-1-spatial-visualization.html#the-choropleth",
+    "href": "slides-session2-1-spatial-visualization.html#the-choropleth",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "The Choropleth",
+    "text": "The Choropleth\n\nA thematic map in which values of a variable are encoded with a colour gradient.\n\n\nThe spatial counterpart of the histogram.\nThree choices decide whether it informs or misleads:\n\nWhat you map: rates, not raw counts\nHow you classify: the breaks (quantile, equal-interval, Jenks)\nWhich colours: sequential vs diverging, colour-blind safe"
+  },
+  {
+    "objectID": "slides-session2-1-spatial-visualization.html#rates-not-counts",
+    "href": "slides-session2-1-spatial-visualization.html#rates-not-counts",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Rates, not counts",
+    "text": "Rates, not counts\n\nCounts mostly track population size, so a count map is often just a population map.\nMap rates (per 1000, per 100k) or proportions to compare places fairly.\nSmall-population areas give unstable rates: a single case swings them. Note this when you read the map."
+  },
+  {
+    "objectID": "slides-session2-1-spatial-visualization.html#colour-classification-accessibility",
+    "href": "slides-session2-1-spatial-visualization.html#colour-classification-accessibility",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Colour, classification, accessibility",
+    "text": "Colour, classification, accessibility\n\nSequential palette for low-to-high; diverging for departure from a midpoint.\nUse colour-blind-safe palettes (viridis) and keep classes few (4 to 6).\nThe same data with different breaks tells different stories: always state the scheme."
+  },
+  {
+    "objectID": "slides-session2-1-spatial-visualization.html#a-map-is-spatial-data",
+    "href": "slides-session2-1-spatial-visualization.html#a-map-is-spatial-data",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "A map is spatial data",
+    "text": "A map is spatial data\n\nlibrary(sf)\nlibrary(tidyverse)\nlibrary(here)\n\ndistricts &lt;- read_rds(here(\"spatial_files\", \"india_district_sf.rds\"))\n\nggplot(districts) +\n  geom_sf(linewidth = 0.05, fill = \"grey95\", colour = \"grey40\") +\n  theme_void()\n\n\nDistrict polygons read with sf. Geometry plus attributes is all we need to start mapping."
+  },
+  {
+    "objectID": "slides-session2-1-spatial-visualization.html#building-a-choropleth-pattern-to-reuse",
+    "href": "slides-session2-1-spatial-visualization.html#building-a-choropleth-pattern-to-reuse",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Building a choropleth (pattern to reuse)",
+    "text": "Building a choropleth (pattern to reuse)\n\ndistricts |&gt;                                  # an sf object\n  left_join(indicator_df, by = \"district\") |&gt; # attach the variable\n  ggplot() +\n  geom_sf(aes(fill = stunting), colour = \"white\", linewidth = 0.1) +\n  scale_fill_viridis_c(option = \"magma\", direction = -1) +\n  theme_void()\n\nYou build exactly this in Exercise 6 (NFHS stunting). The same recipe drives the maps in the rest of the module."
+  },
+  {
+    "objectID": "slides-session2-1-spatial-visualization.html#recap",
+    "href": "slides-session2-1-spatial-visualization.html#recap",
+    "title": "Spatial Data Visualization & Cartographic Principles",
+    "section": "Recap",
+    "text": "Recap\n\nThe map is the first instrument: design it with care (contrast, hierarchy, honest rates, safe colour).\nChoropleth choices: what (rates not counts), how (breaks), which (colour).\nOne sf + ggplot2 recipe builds every map in the module.\nNext: Exploratory Spatial Data Analysis."
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html",
+    "href": "session1a-intro-gis-public-health_v2.html",
+    "title": "Introduction to GIS for Public Health",
+    "section": "",
+    "text": "Public health - demands a broader view!\nThe need for participatory decision making in public health\nThe transparency of open data science approach\n\n\n\n\n\nThe third upcoming area of research methods\n\nObservational\nExperimental\nComputational/data science/ML/AI, etc.\n\n\n\n\n\nData that defines geographical features like roads, rivers\nSoil types, land use, elevation\nDemographics, socioeconomic attributes\nEnvironmental, climate, air-quality\nAnnotations that label features and places\n\n\n\n\n\n\n\nAnalyse and extract insights from geospatial data\nWork with real-world data on a number of domains and problems\nAcquire key data science skills and important tools to answer spatial questions\n\n\n\nA valuable tool for public health policy advocacy\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nHard Skills - Programming Language - Transparency and Reproducibility\nSoft Skills - Communication - Storytelling - Geospatial analytics - Ethical skills\n\n\n\n\n\n\n\nQGIS and GRASS has revolutionized Open source Geographic Information Systems (GIS).\nHowever, the reproducibility aspect has many challenges\n\n\n\n\n\nR and\nPython\n\nare a good way to bring in reproducible algorithms for GIS/SDS\n\n\n\n\n\n\n\nHigh-performance computer hardware\nEfficient algorithms to process vast data sets\n\n\n\n\n\nScalable solutions with the R\nextract valuable insights from the noise\n\n\n\n\n\nThe advent of spatial databases\n\n\n\n\n\nTraditionally data in healthcare are:\n\nCollected for the purpose (carefully designed)\nDetailed and informative (“rich profile and portraits”)\nHigh quality\n\n\n\n\n\nHowever, they are:\n\nMassive enterprises (very costly)\nCoarse resolution (need to be aggregated to protect privacy)\nSlow - the more detailed, the less frequent they are available\n\n\n\n\n\nDecennial census (census geographies)\nLongitudinal surveys\nCustom collected surveys, interviews etc.\nEconomic or well-being indicators\n\n\n\n\n\n\nTied into the Geodata revolution\nAccidental: created for different purposes but available for analysis as a side product\nDiverse: resolution and quality but, potentially much more detailed in both space and time\n\n\n\n\n\nBias\nTechnical barriers\nMethodological “mismatch”",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#introduction-1",
+    "href": "session1a-intro-gis-public-health_v2.html#introduction-1",
+    "title": "Introduction to GIS for Public Health",
+    "section": "",
+    "text": "Public health - demands a broader view!\nThe need for participatory decision making in public health\nThe transparency of open data science approach",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#areas-of-research-methods",
+    "href": "session1a-intro-gis-public-health_v2.html#areas-of-research-methods",
+    "title": "Introduction to GIS for Public Health",
+    "section": "",
+    "text": "The third upcoming area of research methods\n\nObservational\nExperimental\nComputational/data science/ML/AI, etc.\n\n\n\n\n\nData that defines geographical features like roads, rivers\nSoil types, land use, elevation\nDemographics, socioeconomic attributes\nEnvironmental, climate, air-quality\nAnnotations that label features and places",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#what-is-geo-spatial-data-science",
+    "href": "session1a-intro-gis-public-health_v2.html#what-is-geo-spatial-data-science",
+    "title": "Introduction to GIS for Public Health",
+    "section": "",
+    "text": "Analyse and extract insights from geospatial data\nWork with real-world data on a number of domains and problems\nAcquire key data science skills and important tools to answer spatial questions\n\n\n\nA valuable tool for public health policy advocacy\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nHard Skills - Programming Language - Transparency and Reproducibility\nSoft Skills - Communication - Storytelling - Geospatial analytics - Ethical skills",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#tools-for-spatial-data-science-sds",
+    "href": "session1a-intro-gis-public-health_v2.html#tools-for-spatial-data-science-sds",
+    "title": "Introduction to GIS for Public Health",
+    "section": "",
+    "text": "QGIS and GRASS has revolutionized Open source Geographic Information Systems (GIS).\nHowever, the reproducibility aspect has many challenges\n\n\n\n\n\nR and\nPython\n\nare a good way to bring in reproducible algorithms for GIS/SDS",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#the-geodata-revolution",
+    "href": "session1a-intro-gis-public-health_v2.html#the-geodata-revolution",
+    "title": "Introduction to GIS for Public Health",
+    "section": "",
+    "text": "High-performance computer hardware\nEfficient algorithms to process vast data sets\n\n\n\n\n\nScalable solutions with the R\nextract valuable insights from the noise\n\n\n\n\n\nThe advent of spatial databases",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#healthcare-data",
+    "href": "session1a-intro-gis-public-health_v2.html#healthcare-data",
+    "title": "Introduction to GIS for Public Health",
+    "section": "",
+    "text": "Traditionally data in healthcare are:\n\nCollected for the purpose (carefully designed)\nDetailed and informative (“rich profile and portraits”)\nHigh quality",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#healthcare-data-limitations",
+    "href": "session1a-intro-gis-public-health_v2.html#healthcare-data-limitations",
+    "title": "Introduction to GIS for Public Health",
+    "section": "",
+    "text": "However, they are:\n\nMassive enterprises (very costly)\nCoarse resolution (need to be aggregated to protect privacy)\nSlow - the more detailed, the less frequent they are available\n\n\n\n\n\nDecennial census (census geographies)\nLongitudinal surveys\nCustom collected surveys, interviews etc.\nEconomic or well-being indicators",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#new-forms-of-spatial-data",
+    "href": "session1a-intro-gis-public-health_v2.html#new-forms-of-spatial-data",
+    "title": "Introduction to GIS for Public Health",
+    "section": "",
+    "text": "Tied into the Geodata revolution\nAccidental: created for different purposes but available for analysis as a side product\nDiverse: resolution and quality but, potentially much more detailed in both space and time",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#challenges-arribas-bel-2014",
+    "href": "session1a-intro-gis-public-health_v2.html#challenges-arribas-bel-2014",
+    "title": "Introduction to GIS for Public Health",
+    "section": "",
+    "text": "Bias\nTechnical barriers\nMethodological “mismatch”",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#spatial-visualization",
+    "href": "session1a-intro-gis-public-health_v2.html#spatial-visualization",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Spatial Visualization",
+    "text": "Spatial Visualization\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nBy encoding information visually, they allow to present large amounts of numbers in a meaningful way.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#a-map-for-everyone",
+    "href": "session1a-intro-gis-public-health_v2.html#a-map-for-everyone",
+    "title": "Introduction to GIS for Public Health",
+    "section": "A Map for Everyone",
+    "text": "A Map for Everyone\n\nA Real Public Health Tool\n\nMaps can fulfill several needs, looking very different depending on the end-goal.\n\n\n\nThree Main Dimensions\n\nKnowledge of what is being plotted\nTarget audience\nDegree of interactivity\n\n\n\nMacEachren & Kraak (1997)",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#maceachren-kraak-1997",
+    "href": "session1a-intro-gis-public-health_v2.html#maceachren-kraak-1997",
+    "title": "Introduction to GIS for Public Health",
+    "section": "MacEachren & Kraak (1997)",
+    "text": "MacEachren & Kraak (1997)",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#dibiases-1990-swoopy",
+    "href": "session1a-intro-gis-public-health_v2.html#dibiases-1990-swoopy",
+    "title": "Introduction to GIS for Public Health",
+    "section": "DiBiase’s (1990) “Swoopy”",
+    "text": "DiBiase’s (1990) “Swoopy”\nTranslating numbers into a (visual) language that the human brain “speaks better”",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#exploratory-visualization",
+    "href": "session1a-intro-gis-public-health_v2.html#exploratory-visualization",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Exploratory Visualization",
+    "text": "Exploratory Visualization\n &gt; “forces us to notice what we never expected to see”\n\n(Tukey 1977: vi)\n\n\n\nMostly for researchers in the course of the research process.\nMany, quick and dirty, and rather unattractive graphs.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#explanatory-visualization",
+    "href": "session1a-intro-gis-public-health_v2.html#explanatory-visualization",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Explanatory Visualization",
+    "text": "Explanatory Visualization\n &gt; “forces readers to see the information the designer wanted to convey”\n\n(Kosslyn 1994: 271)\n\n\n\nMostly for others after the research is completed.\nFew, carefully crafted, and attractive graphs.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#choropleths",
+    "href": "session1a-intro-gis-public-health_v2.html#choropleths",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Choropleths",
+    "text": "Choropleths\n\nThematic map in which values of a variable are encoded using a colour gradient of some sort\n\n\nCounterpart of the histogram\n\n\nBoth allows us to guage the distribution of a variable.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#spatial-weights-1",
+    "href": "session1a-intro-gis-public-health_v2.html#spatial-weights-1",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Spatial Weights",
+    "text": "Spatial Weights\nFor a statistical method to be explicitly spatial, it needs to contain some representation of the geography, or spatial context.\n\n(Geo)-Spatial Visualization:\n\ntranslating numbers into a (visual) language (colors) that the human brain can interpret.\n\n\n\nSpatial Weights Matrices:\n\ntranslating geography into a (numerical) language that a computer can interpret.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#spatial-weight-matrices",
+    "href": "session1a-intro-gis-public-health_v2.html#spatial-weight-matrices",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Spatial Weight Matrices",
+    "text": "Spatial Weight Matrices\nSpatial Weights Matrices are building block for spatial analysis and statistics.\n\nThey are used to assign a weighted average or sum of neighbouring data values to an observation, or other point in space.\nRelates to concepts of spatial ‘smoothing’ and interpolating data",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#applications-of-spatial-weights",
+    "href": "session1a-intro-gis-public-health_v2.html#applications-of-spatial-weights",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Applications of Spatial weights",
+    "text": "Applications of Spatial weights\nSpatial weights form the core element in several spatial analysis techniques\n\nSpatial autocorrelation\nSpatial clustering/geo-demographics\nSpatial regression",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#spatial-heterogeneity",
+    "href": "session1a-intro-gis-public-health_v2.html#spatial-heterogeneity",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Spatial Heterogeneity",
+    "text": "Spatial Heterogeneity\nMost influential local determinants of household energy expenditure\n\n\n\n\n\n\n\nMashhoodi et al., 2019 (doi:10.1080/19475683.2018.1557253)",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#redcap-and-mlr",
+    "href": "session1a-intro-gis-public-health_v2.html#redcap-and-mlr",
+    "title": "Introduction to GIS for Public Health",
+    "section": "REDCAP and MLR",
+    "text": "REDCAP and MLR\nLate-stage breast cancer rates in Chicago region in 2000: (a) ZIP code areas, (b) REDCAP-constructed areas\n ::: aside Wang et al., 2015 (doi:10.1080/19475683.2019.1702099) :::",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "session1a-intro-gis-public-health_v2.html#sfca",
+    "href": "session1a-intro-gis-public-health_v2.html#sfca",
+    "title": "Introduction to GIS for Public Health",
+    "section": "2SFCA",
+    "text": "2SFCA\n\nTwo-step floating catchment area (2SFCA) method\nHospital potential crowdedness\n\n\n\n\n\n\n\n\nWang et al., 2018 (10.1080/19475683.2019.1702099)",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Intro to GIS for Public Health"
+    ]
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#introduction-1",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#introduction-1",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Introduction",
+    "text": "Introduction\n\nPublic health - demands a broader view!\nThe need for participatory decision making in public health\nThe transparency of open data science approach"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#areas-of-research-methods",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#areas-of-research-methods",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Areas of Research Methods",
+    "text": "Areas of Research Methods\nThe third upcoming area of research methods\n\nObservational\nExperimental\nComputational/data science/ML/AI, etc."
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#what-is-geo-spatial-data-science",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#what-is-geo-spatial-data-science",
+    "title": "Introduction to GIS for Public Health",
+    "section": "What is (Geo)-Spatial Data Science?",
+    "text": "What is (Geo)-Spatial Data Science?\n\nAnalyse and extract insights from geospatial data\nWork with real-world data on a number of domains and problems\nAcquire key data science skills and important tools to answer spatial questions\n\n\n\nA valuable tool for public health policy advocacy"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#tools-for-spatial-data-science-sds",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#tools-for-spatial-data-science-sds",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Tools for Spatial Data Science (SDS)",
+    "text": "Tools for Spatial Data Science (SDS)\nGraphical User Interfaces (GUIs)\n\nQGIS and GRASS has revolutionized Open source Geographic Information Systems (GIS).\nHowever, the reproducibility aspect has many challenges\n\nCommand Line Interfaces (CLIs)\n\nR and\nPython\n\nare a good way to bring in reproducible algorithms for GIS/SDS"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#the-geodata-revolution",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#the-geodata-revolution",
+    "title": "Introduction to GIS for Public Health",
+    "section": "The Geodata ’revolution’",
+    "text": "The Geodata ’revolution’\nAdvanced Hardware\n\nHigh-performance computer hardware\nEfficient algorithms to process vast data sets\n\nScalable Software\n\nScalable solutions with the R\nextract valuable insights from the noise\n\nSpatial Databases\n\nThe advent of spatial databases"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#healthcare-data",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#healthcare-data",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Healthcare Data",
+    "text": "Healthcare Data\nTraditionally data in healthcare are:\n\nCollected for the purpose (carefully designed)\nDetailed and informative (“rich profile and portraits”)\nHigh quality"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#healthcare-data-limitations",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#healthcare-data-limitations",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Healthcare Data: Limitations",
+    "text": "Healthcare Data: Limitations\nHowever, they are:\n\nMassive enterprises (very costly)\nCoarse resolution (need to be aggregated to protect privacy)\nSlow - the more detailed, the less frequent they are available"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#new-forms-of-spatial-data",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#new-forms-of-spatial-data",
+    "title": "Introduction to GIS for Public Health",
+    "section": "New Forms of Spatial Data",
+    "text": "New Forms of Spatial Data\n\nTied into the Geodata revolution\nAccidental: created for different purposes but available for analysis as a side product\nDiverse: resolution and quality but, potentially much more detailed in both space and time"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#challenges-arribas-bel-2014",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#challenges-arribas-bel-2014",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Challenges (Arribas-Bel, 2014)",
+    "text": "Challenges (Arribas-Bel, 2014)\n\nBias\nTechnical barriers\nMethodological “mismatch”"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#spatial-visualization",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#spatial-visualization",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Spatial Visualization",
+    "text": "Spatial Visualization\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nBy encoding information visually, they allow to present large amounts of numbers in a meaningful way."
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#a-map-for-everyone",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#a-map-for-everyone",
+    "title": "Introduction to GIS for Public Health",
+    "section": "A Map for Everyone",
+    "text": "A Map for Everyone\nA Real Public Health Tool\n\nMaps can fulfill several needs, looking very different depending on the end-goal.\n\nThree Main Dimensions\n\nKnowledge of what is being plotted\nTarget audience\nDegree of interactivity\n\n\n\nMacEachren & Kraak (1997)"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#maceachren-kraak-1997",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#maceachren-kraak-1997",
+    "title": "Introduction to GIS for Public Health",
+    "section": "MacEachren & Kraak (1997)",
+    "text": "MacEachren & Kraak (1997)"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#dibiases-1990-swoopy",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#dibiases-1990-swoopy",
+    "title": "Introduction to GIS for Public Health",
+    "section": "DiBiase’s (1990) “Swoopy”",
+    "text": "DiBiase’s (1990) “Swoopy”\nTranslating numbers into a (visual) language that the human brain “speaks better”"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#exploratory-visualization",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#exploratory-visualization",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Exploratory Visualization",
+    "text": "Exploratory Visualization\n &gt; “forces us to notice what we never expected to see”\n\n(Tukey 1977: vi)\n\n\n\nMostly for researchers in the course of the research process.\nMany, quick and dirty, and rather unattractive graphs."
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#explanatory-visualization",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#explanatory-visualization",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Explanatory Visualization",
+    "text": "Explanatory Visualization\n &gt; “forces readers to see the information the designer wanted to convey”\n\n(Kosslyn 1994: 271)\n\n\n\nMostly for others after the research is completed.\nFew, carefully crafted, and attractive graphs."
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#choropleths",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#choropleths",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Choropleths",
+    "text": "Choropleths\n\nThematic map in which values of a variable are encoded using a colour gradient of some sort\n\n\nCounterpart of the histogram\n\n\nBoth allows us to guage the distribution of a variable."
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#spatial-weights-1",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#spatial-weights-1",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Spatial Weights",
+    "text": "Spatial Weights\nFor a statistical method to be explicitly spatial, it needs to contain some representation of the geography, or spatial context.\n(Geo)-Spatial Visualization:\n\ntranslating numbers into a (visual) language (colors) that the human brain can interpret.\n\nSpatial Weights Matrices:\n\ntranslating geography into a (numerical) language that a computer can interpret."
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#spatial-weight-matrices",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#spatial-weight-matrices",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Spatial Weight Matrices",
+    "text": "Spatial Weight Matrices\nSpatial Weights Matrices are building block for spatial analysis and statistics.\n\nThey are used to assign a weighted average or sum of neighbouring data values to an observation, or other point in space.\nRelates to concepts of spatial ‘smoothing’ and interpolating data"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#applications-of-spatial-weights",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#applications-of-spatial-weights",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Applications of Spatial weights",
+    "text": "Applications of Spatial weights\nSpatial weights form the core element in several spatial analysis techniques\n\nSpatial autocorrelation\nSpatial clustering/geo-demographics\nSpatial regression"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#spatial-heterogeneity",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#spatial-heterogeneity",
+    "title": "Introduction to GIS for Public Health",
+    "section": "Spatial Heterogeneity",
+    "text": "Spatial Heterogeneity\nMost influential local determinants of household energy expenditure\n\n\n\n\n\n\n\nMashhoodi et al., 2019 (doi:10.1080/19475683.2018.1557253)"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#redcap-and-mlr",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#redcap-and-mlr",
+    "title": "Introduction to GIS for Public Health",
+    "section": "REDCAP and MLR",
+    "text": "REDCAP and MLR\nLate-stage breast cancer rates in Chicago region in 2000: (a) ZIP code areas, (b) REDCAP-constructed areas\n ::: aside Wang et al., 2015 (doi:10.1080/19475683.2019.1702099) :::"
+  },
+  {
+    "objectID": "slides-session1a-intro-gis-public-health_v2.html#sfca",
+    "href": "slides-session1a-intro-gis-public-health_v2.html#sfca",
+    "title": "Introduction to GIS for Public Health",
+    "section": "2SFCA",
+    "text": "2SFCA\n\nTwo-step floating catchment area (2SFCA) method\nHospital potential crowdedness\n\n\n\n\n\n\n\n\nWang et al., 2018 (10.1080/19475683.2019.1702099)"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "Spatial Epidemiology and Applied Data Science is the Second Module (Intermediate level) of the DMgtAsia course. It draws on spatial data science trainings and workshops run across India, and is packaged here as a self-paced or intensive workshop with hands-on R exercises and auto-graded quizzes.",
+    "crumbs": [
+      "Home",
+      "Reference",
+      "About"
+    ]
+  },
+  {
+    "objectID": "about.html#the-module",
+    "href": "about.html#the-module",
+    "title": "About",
+    "section": "",
+    "text": "Spatial Epidemiology and Applied Data Science is the Second Module (Intermediate level) of the DMgtAsia course. It draws on spatial data science trainings and workshops run across India, and is packaged here as a self-paced or intensive workshop with hands-on R exercises and auto-graded quizzes.",
+    "crumbs": [
+      "Home",
+      "Reference",
+      "About"
+    ]
+  },
+  {
+    "objectID": "about.html#authors",
+    "href": "about.html#authors",
+    "title": "About",
+    "section": "Authors",
+    "text": "Authors\n\nProf. (Dr.) Biju Soman, Achutha Menon Centre for Health Science Studies, SCTIMST, Trivandrum\nDr. Arun Mitra, All India Institute of Medical Sciences (AIIMS), Bibinagar, Hyderabad, Telangana",
+    "crumbs": [
+      "Home",
+      "Reference",
+      "About"
+    ]
+  },
+  {
+    "objectID": "about.html#source-licence",
+    "href": "about.html#source-licence",
+    "title": "About",
+    "section": "Source & licence",
+    "text": "Source & licence\nSource repository: https://github.com/drarunmitra/DMgtAsia_Spatial_Module\nTeaching materials are released under CC-BY-SA; code under MIT, unless noted otherwise. Datasets keep their original licences (NMC, NFHS, WHO, SEDAC GPWv4, HistData).",
+    "crumbs": [
+      "Home",
+      "Reference",
+      "About"
+    ]
+  },
+  {
+    "objectID": "about.html#acknowledgements",
+    "href": "about.html#acknowledgements",
+    "title": "About",
+    "section": "Acknowledgements",
+    "text": "Acknowledgements\nWith thanks to Dr. Gurpreet Singh, Associate Professor, Armed Forces Medical College (AFMC), Pune, Maharashtra.\nBuilt on the sf, spdep, rgeoda, exactextractr, tidygeocoder, ggspatial and tidyverse packages, and on the CDC GeoSWG cartographic guidelines.",
+    "crumbs": [
+      "Home",
+      "Reference",
+      "About"
+    ]
+  },
+  {
+    "objectID": "capstone.html",
+    "href": "capstone.html",
+    "title": "Capstone: Reproducible Spatial Pipeline",
+    "section": "",
+    "text": "The capstone takes a district-level health indicator from raw data to a clustered, mapped, and interpreted result, as a reproducible pipeline rather than a one-off script.",
+    "crumbs": [
+      "Home",
+      "Session-IV · Analysis & Clustering",
+      "Capstone"
+    ]
+  },
+  {
+    "objectID": "capstone.html#what-you-build",
+    "href": "capstone.html#what-you-build",
+    "title": "Capstone: Reproducible Spatial Pipeline",
+    "section": "What you build",
+    "text": "What you build\nA pipeline on district-level health data (the bundled AHS/NFHS example, or an indicator of your choice):\n\nProfile the raw data: capstone/R/02-profile-document.R\nClean & validate: capstone/R/03-clean-validate.R\nTidy & reshape: capstone/R/04-tidy-reshape.R\nTransform (derive indicators): capstone/R/05-transform.R\nEDA & plot: capstone/R/06-eda-plot.R\nAnalyse (model and spatial clustering): capstone/R/07-analyse.R\n\nRun the chain with capstone/run-all.R. It produces the figures and tables that capstone/report.qmd knits into a report.\nFor the clustering step on its own (Queen contiguity, spatial weights, Moran’s I, LISA), see capstone/ahs_clustering_exercise.r.",
+    "crumbs": [
+      "Home",
+      "Session-IV · Analysis & Clustering",
+      "Capstone"
+    ]
+  },
+  {
+    "objectID": "capstone.html#deliverable",
+    "href": "capstone.html#deliverable",
+    "title": "Capstone: Reproducible Spatial Pipeline",
+    "section": "Deliverable",
+    "text": "Deliverable\nPick a public health indicator (stunting, wasting, underweight, anaemia, IMR) and submit:\n\nthe reproducible script(s) or Quarto document,\na global and local clustering analysis (Moran’s I and a LISA cluster map),\na 500-word interpretation written for a public health decision-maker.\n\n\n\n\n\n\n\nNoteRunning the capstone\n\n\n\nThe capstone scripts write their own outputs/ (data, figures) when you run capstone/run-all.R. Run it once before knitting capstone/report.qmd.",
+    "crumbs": [
+      "Home",
+      "Session-IV · Analysis & Clustering",
+      "Capstone"
+    ]
+  },
+  {
+    "objectID": "index.html#welcome",
+    "href": "index.html#welcome",
+    "title": "Spatial Epidemiology and Applied Data Science",
+    "section": "Welcome",
+    "text": "Welcome\nThis is the Second Module (Intermediate level) of the DMgtAsia course. It covers spatial epidemiology and spatial data science in R, from GIS concepts through to disease-cluster detection on Indian public health datasets.\nThe material draws on spatial data science trainings and workshops run across India, adapted for the DMgtAsia course.",
+    "crumbs": [
+      "Home"
+    ]
+  },
+  {
+    "objectID": "index.html#what-you-will-be-able-to-do",
+    "href": "index.html#what-you-will-be-able-to-do",
+    "title": "Spatial Epidemiology and Applied Data Science",
+    "section": "What you will be able to do",
+    "text": "What you will be able to do\n\nExplain GIS concepts (CRS and projections, spatial dependence, spatial autocorrelation, Tobler’s First Law) and how they apply to public health.\nRun spatial exploratory data analysis and apply CDC cartographic guidelines to public health maps.\nRead, transform and join spatial data with sf; extract raster values; geocode addresses; and build choropleths.\nRun and interpret global and local spatial autocorrelation (Moran’s I, LISA), and map SIR/SMR to find disease clusters.",
+    "crumbs": [
+      "Home"
+    ]
+  },
+  {
+    "objectID": "index.html#how-the-module-is-organised",
+    "href": "index.html#how-the-module-is-organised",
+    "title": "Spatial Epidemiology and Applied Data Science",
+    "section": "How the module is organised",
+    "text": "How the module is organised\nThe module has four sessions. Each pairs a lecture with hands-on R exercises and a quiz.\n\n\n\n\n\n\n\n\n\nSession\nTheme\nLectures\nHands-on\n\n\n\n\nSession-I\nFoundations of spatial thinking\nIntro to GIS · Concepts in SDS\nReflection\n\n\nSession-II\nExploratory Spatial Data Analysis (ESDA)\nExploring data with R · Visualization principles\nEDA on WHO TB data\n\n\nSession-III\nIntroduction to sf\nThe sf package\nExercises 1–4\n\n\nSession-IV\nSpatial Data Analysis & Clustering\n(lab-led)\nExercises 6–7 · John Snow · SIR/SMR · Capstone\n\n\n\nFor the full session list and run order, see the navigation bar, or go to Setup to prepare your machine.",
+    "crumbs": [
+      "Home"
+    ]
+  },
+  {
+    "objectID": "index.html#delivery",
+    "href": "index.html#delivery",
+    "title": "Spatial Epidemiology and Applied Data Science",
+    "section": "Delivery",
+    "text": "Delivery\n\nSelf-paced: 4 weeks, one session per week.\nIntensive workshop: 2 days. Day 1 covers Sessions I–II, Day 2 covers Sessions III–IV.",
+    "crumbs": [
+      "Home"
+    ]
+  },
+  {
+    "objectID": "index.html#acknowledgements",
+    "href": "index.html#acknowledgements",
+    "title": "Spatial Epidemiology and Applied Data Science",
+    "section": "Acknowledgements",
+    "text": "Acknowledgements\nDeveloped at the Achutha Menon Centre for Health Science Studies, SCTIMST, and AIIMS Bibinagar. Built on the sf, spdep, rgeoda, ggspatial and tidyverse packages. Data: NMC, NFHS, WHO, SEDAC GPWv4, and HistData.",
+    "crumbs": [
+      "Home"
+    ]
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#gis-and-public-health",
+    "href": "slides-session1b-concepts-spatial-data-science.html#gis-and-public-health",
+    "title": "Spatial Data Science with R",
+    "section": "GIS and Public Health",
+    "text": "GIS and Public Health\n\n\n\nExtremely useful in providing a fresh outlook to public health.\nProvides opportunity to enable overlaying data with its spatial representation\nSupports better planning and decision-making.\nThe convergence of many new sub-disciplines:\n\nmedical geography\npublic health informatics\ndata science\n\n\n\n\n\nMap of the plague in the province of Bari, Naples, 1690-1692\n\nThe map shows areas most affected and the boundaries of a military quarantine imposed to prevent its spread to neighboring towns and to other provinces.\n\n\n\nKoch T. Mapping the miasma: air, health, and place in early medical mapping. Cartographic Perspectives. 2005 Sep 1(52):4-27."
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#applications-of-gis-in-public-health-cont.",
+    "href": "slides-session1b-concepts-spatial-data-science.html#applications-of-gis-in-public-health-cont.",
+    "title": "Spatial Data Science with R",
+    "section": "Applications of GIS in Public Health (cont.)",
+    "text": "Applications of GIS in Public Health (cont.)\n\n\n\n\n\n\nWhile traditional uses of GIS in healthcare still are relevant, newer methods and advancing technology would be monumental for public health research."
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#what-is-spatial-data-science",
+    "href": "slides-session1b-concepts-spatial-data-science.html#what-is-spatial-data-science",
+    "title": "Spatial Data Science with R",
+    "section": "What is Spatial Data Science?",
+    "text": "What is Spatial Data Science?\n\n\n\n\n\n\n\n\nDefinition\n\n\n\nSpatial data science (SDS) is a subset of Data Science that focuses on the unique characteristics of spatial data, moving beyond simply looking at where things happen to understand why they happen there.\n\nCARTO - https://carto.com/what-is-spatial-data-science\n\n\n\n\n\n\n\nLike data science, spatial data science seems to be a field that arises bottom-up in and from many existing scientific disciplines and industrial activities concerned with application of spatial data, rather than being a sub-discipline of an existing scientific discipline.\n\nEdzer Pebesma, Roger Bivand - Spatial Data Science With Applications in R\n\n\nhttps://r-spatial.org/book/"
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#why-spatial-data-science-for-public-health-cont.",
+    "href": "slides-session1b-concepts-spatial-data-science.html#why-spatial-data-science-for-public-health-cont.",
+    "title": "Spatial Data Science with R",
+    "section": "Why Spatial Data Science for Public Health? (cont.)",
+    "text": "Why Spatial Data Science for Public Health? (cont.)"
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#core-concepts-related-to-gis",
+    "href": "slides-session1b-concepts-spatial-data-science.html#core-concepts-related-to-gis",
+    "title": "Spatial Data Science with R",
+    "section": "Core Concepts related to GIS",
+    "text": "Core Concepts related to GIS\nSpatial data are fundamental to many geographical analyses and spatial data science draws strongly from key geographical concepts\n\nFirst Law of Geography\n\n\n\n\n\n\n\n\nTobler’s First Law\n\n\n“Everything is related to everything else, but near things are more related than distant things”\n\nWaldo Tobler, 1970"
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#projection-systems-cont.",
+    "href": "slides-session1b-concepts-spatial-data-science.html#projection-systems-cont.",
+    "title": "Spatial Data Science with R",
+    "section": "Projection Systems (cont.)",
+    "text": "Projection Systems (cont.)\n\nThe Mollweide Equal Area Cylindrical projection, for example, ensures that all mapped areas have the same proportional relationship to the areas on the Earth."
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#projection-systems-cont.-1",
+    "href": "slides-session1b-concepts-spatial-data-science.html#projection-systems-cont.-1",
+    "title": "Spatial Data Science with R",
+    "section": "Projection Systems (cont.)",
+    "text": "Projection Systems (cont.)\n\nThe Plate Carree Equidistant Cylindrical projection, for example, is used when accurate distance measurement is important."
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#projection-systems-cont.-2",
+    "href": "slides-session1b-concepts-spatial-data-science.html#projection-systems-cont.-2",
+    "title": "Spatial Data Science with R",
+    "section": "Projection Systems (cont.)",
+    "text": "Projection Systems (cont.)\n\nThe Robinson projection is a compromise where distortions of area, angular conformity and distance are acceptable."
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#projection-systems-cont.-3",
+    "href": "slides-session1b-concepts-spatial-data-science.html#projection-systems-cont.-3",
+    "title": "Spatial Data Science with R",
+    "section": "Projection Systems (cont.)",
+    "text": "Projection Systems (cont.)\n\nThe United Nations Logo uses the Azimuthal Equidistant projection"
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#projection-systems-cont.-4",
+    "href": "slides-session1b-concepts-spatial-data-science.html#projection-systems-cont.-4",
+    "title": "Spatial Data Science with R",
+    "section": "Projection Systems (cont.)",
+    "text": "Projection Systems (cont.)\n\nWhat four commonly used projections do, as shown on the human head"
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#data-science-as-a-methodological-approach",
+    "href": "slides-session1b-concepts-spatial-data-science.html#data-science-as-a-methodological-approach",
+    "title": "Spatial Data Science with R",
+    "section": "Data Science as a methodological approach",
+    "text": "Data Science as a methodological approach\n\n\n\n\n\n\nNote\n\n\n\nThe key word in  data science is not data, it is science.\n\n– Jeff Leek, JHU Data Science Lab"
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#reproducible-research-1",
+    "href": "slides-session1b-concepts-spatial-data-science.html#reproducible-research-1",
+    "title": "Spatial Data Science with R",
+    "section": "Reproducible Research",
+    "text": "Reproducible Research\n\n\n\nThere are four key elements of reproducible research:\n\ndata documentation\ndata publication\ncode publication,\noutput publication."
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#tools-for-spatial-data-science",
+    "href": "slides-session1b-concepts-spatial-data-science.html#tools-for-spatial-data-science",
+    "title": "Spatial Data Science with R",
+    "section": "Tools for Spatial Data Science",
+    "text": "Tools for Spatial Data Science\n\n\n\nGIS related\nData Science related\nSpatial Data Science related\n\n\nR is the best spatial data science tool available for public health !!!\n\n R provides a range of powerful packages for geospatial analysis, enabling advanced computations and analytics."
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#r-spatial-analysis-ecosystem",
+    "href": "slides-session1b-concepts-spatial-data-science.html#r-spatial-analysis-ecosystem",
+    "title": "Spatial Data Science with R",
+    "section": "R Spatial Analysis Ecosystem",
+    "text": "R Spatial Analysis Ecosystem\n\n\n\n\nCRAN Task View - Spatial Analysis\n\n\n\n\n\nhttps://cran.r-project.org/web/views/Spatial.html"
+  },
+  {
+    "objectID": "slides-session1b-concepts-spatial-data-science.html#r-spatial-learning-resources",
+    "href": "slides-session1b-concepts-spatial-data-science.html#r-spatial-learning-resources",
+    "title": "Spatial Data Science with R",
+    "section": "R Spatial Learning Resources",
+    "text": "R Spatial Learning Resources\n\n\n\nWealth of Resource material\nPowerful tools/packages\nseamlessly handle vector and raster data\ninractive visualization\nend-to-end solution\n\n \nNewest addition: Spatial Data Science: With Applications in R"
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html",
+    "href": "session1b-concepts-spatial-data-science.html",
+    "title": "Spatial Data Science with R",
+    "section": "",
+    "text": "Extremely useful in providing a fresh outlook to public health.\nProvides opportunity to enable overlaying data with its spatial representation\nSupports better planning and decision-making.\nThe convergence of many new sub-disciplines:\n\nmedical geography\npublic health informatics\ndata science\n\n\n\n\n\nMap of the plague in the province of Bari, Naples, 1690-1692\n\nThe map shows areas most affected and the boundaries of a military quarantine imposed to prevent its spread to neighboring towns and to other provinces.\n\n\n\n\nKoch T. Mapping the miasma: air, health, and place in early medical mapping. Cartographic Perspectives. 2005 Sep 1(52):4-27.\n\n\n\n\n\ndisease surveillance\nenvironmental health\ninfectious diseases\n\nmathematical modelling\nagent based modelling\n\npopulation genetics\nmedical imagining\ncancer biology",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#gis-and-public-health",
+    "href": "session1b-concepts-spatial-data-science.html#gis-and-public-health",
+    "title": "Spatial Data Science with R",
+    "section": "",
+    "text": "Extremely useful in providing a fresh outlook to public health.\nProvides opportunity to enable overlaying data with its spatial representation\nSupports better planning and decision-making.\nThe convergence of many new sub-disciplines:\n\nmedical geography\npublic health informatics\ndata science\n\n\n\n\n\nMap of the plague in the province of Bari, Naples, 1690-1692\n\nThe map shows areas most affected and the boundaries of a military quarantine imposed to prevent its spread to neighboring towns and to other provinces.\n\n\n\n\nKoch T. Mapping the miasma: air, health, and place in early medical mapping. Cartographic Perspectives. 2005 Sep 1(52):4-27.\n\n\n\n\n\ndisease surveillance\nenvironmental health\ninfectious diseases\n\nmathematical modelling\nagent based modelling\n\npopulation genetics\nmedical imagining\ncancer biology",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#applications-of-gis-in-public-health-cont.",
+    "href": "session1b-concepts-spatial-data-science.html#applications-of-gis-in-public-health-cont.",
+    "title": "Spatial Data Science with R",
+    "section": "Applications of GIS in Public Health (cont.)",
+    "text": "Applications of GIS in Public Health (cont.)\n\n\n\n\n\n\n\nWhile traditional uses of GIS in healthcare still are relevant, newer methods and advancing technology would be monumental for public health research.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#what-is-spatial-data-science",
+    "href": "session1b-concepts-spatial-data-science.html#what-is-spatial-data-science",
+    "title": "Spatial Data Science with R",
+    "section": "What is Spatial Data Science?",
+    "text": "What is Spatial Data Science?\n\n\n\n\n\n\n\n\nNoteDefinition\n\n\n\n\nSpatial data science (SDS) is a subset of Data Science that focuses on the unique characteristics of spatial data, moving beyond simply looking at where things happen to understand why they happen there.\n\nCARTO - https://carto.com/what-is-spatial-data-science\n\n\n\n\n\n\n\nLike data science, spatial data science seems to be a field that arises bottom-up in and from many existing scientific disciplines and industrial activities concerned with application of spatial data, rather than being a sub-discipline of an existing scientific discipline.\n\nEdzer Pebesma, Roger Bivand - Spatial Data Science With Applications in R\n\n\nhttps://r-spatial.org/book/\n\n\n\nHow is it different from Data Science?\n\n\n\n\nWhy Spatial Data Science for Public Health?",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#why-spatial-data-science-for-public-health-cont.",
+    "href": "session1b-concepts-spatial-data-science.html#why-spatial-data-science-for-public-health-cont.",
+    "title": "Spatial Data Science with R",
+    "section": "Why Spatial Data Science for Public Health? (cont.)",
+    "text": "Why Spatial Data Science for Public Health? (cont.)\n\n\n\nPotential of Spatial Data Science for Public Health\n\nWealth of Spatial Data\n70% of all data that is generated data has spatial attributes\nRoutine health data can be geo-referenced\nProvide a gateway for researchers and practitioners to examine the role and harness the power of SDS in public health\nCoupled with the emerging field of spatial statistics, the analysis of this location-based data is developing new and novel directions for public health.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#core-concepts-related-to-gis",
+    "href": "session1b-concepts-spatial-data-science.html#core-concepts-related-to-gis",
+    "title": "Spatial Data Science with R",
+    "section": "Core Concepts related to GIS",
+    "text": "Core Concepts related to GIS\nSpatial data are fundamental to many geographical analyses and spatial data science draws strongly from key geographical concepts\n\n\nFirst Law of Geography\n\n\n\n\n\n\n\n\nNoteTobler’s First Law\n\n\n\n“Everything is related to everything else, but near things are more related than distant things”\n\nWaldo Tobler, 1970\n\n\n\n\n\n\n\n\n\n\nSpatial Dependence and Complete Spatial Randomness\n\nSpatial dependence is “the propensity for nearby locations to influence each other and to possess similar attributes”.\n\n\n\n\nThis means natural phenomenon are not spatially distributed at random.\n\ntemparature,\nrainfall,\npopulation density,\nsocio-economic conditions etc.\n\n\n\nIt can be measured by the indices of Spatial Autocorrelation.\n\n\n\nSpatial Autocorrelation\nRefers to the presence of systematic spatial variation in a mapped variable.\nThe terms spatial association and spatial dependence are often used to reflect spatial auto- correlation as well.\n\n\n\n\nIndices to measure Spatial Dependence\n\n\n\nCovariance Functions and Variograms\nGlobal Spatial Autocorrelation Measures\n\nMoran’s I index\nGeneral G-Statistic\nGeary’s C index\n\nLocal Indicators of Spatial Association (LISA)\n\nLocal Moran’s I index\nGetis-Ord Gi and Gi∗ statistics\n\nSpace-Time Correlation Analysis\n\nBivariate Moran’s I for STC\nDifferential Moran’s I\nEmerging Hot Spot Analysis (EHSA)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nMap Projections & coordinate reference system (CRS)\n\n\n\nMap projections try to transform the earth from its spherical shape (3D) to a planar shape (2D).\nA CRS then defines how the two-dimensional, projected map in your GIS relates to real places on the earth.\nThe decision of which depends on the extent of the area, analysis type, and often on the availability of data.\n\n\n\n\n\na) cylindrical projections, b) conical projections or c) planar projections.\n\n\n\n\n\nhttps://docs.qgis.org/3.28/en/docs/gentle_gis_introduction/coordinate_reference_systems.html\n\n\n\n\nWhy is the CRS Important?\n\nEarth is a GEIOD\n\n\n\nDifferent Projection Systems\n\n\n\nThe Mercator projection, for example, is used where angular relationships are important, but the relationship of areas are distorted.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#projection-systems-cont.",
+    "href": "session1b-concepts-spatial-data-science.html#projection-systems-cont.",
+    "title": "Spatial Data Science with R",
+    "section": "Projection Systems (cont.)",
+    "text": "Projection Systems (cont.)\n\n\n\nThe Mollweide Equal Area Cylindrical projection, for example, ensures that all mapped areas have the same proportional relationship to the areas on the Earth.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#projection-systems-cont.-1",
+    "href": "session1b-concepts-spatial-data-science.html#projection-systems-cont.-1",
+    "title": "Spatial Data Science with R",
+    "section": "Projection Systems (cont.)",
+    "text": "Projection Systems (cont.)\n\n\n\nThe Plate Carree Equidistant Cylindrical projection, for example, is used when accurate distance measurement is important.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#projection-systems-cont.-2",
+    "href": "session1b-concepts-spatial-data-science.html#projection-systems-cont.-2",
+    "title": "Spatial Data Science with R",
+    "section": "Projection Systems (cont.)",
+    "text": "Projection Systems (cont.)\n\n\n\nThe Robinson projection is a compromise where distortions of area, angular conformity and distance are acceptable.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#projection-systems-cont.-3",
+    "href": "session1b-concepts-spatial-data-science.html#projection-systems-cont.-3",
+    "title": "Spatial Data Science with R",
+    "section": "Projection Systems (cont.)",
+    "text": "Projection Systems (cont.)\n\n\n\nThe United Nations Logo uses the Azimuthal Equidistant projection",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#projection-systems-cont.-4",
+    "href": "session1b-concepts-spatial-data-science.html#projection-systems-cont.-4",
+    "title": "Spatial Data Science with R",
+    "section": "Projection Systems (cont.)",
+    "text": "Projection Systems (cont.)\n\n\n\nWhat four commonly used projections do, as shown on the human head\n\n\n\n\nCRS in Action\n\n\n\nhttps://www.thetruesize.com",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#data-science-as-a-methodological-approach",
+    "href": "session1b-concepts-spatial-data-science.html#data-science-as-a-methodological-approach",
+    "title": "Spatial Data Science with R",
+    "section": "Data Science as a methodological approach",
+    "text": "Data Science as a methodological approach\n\n\n\n\n\n\nNote\n\n\n\n\nThe key word in  data science is not data, it is science.\n\n– Jeff Leek, JHU Data Science Lab\n\n\n\n\nReproducible Research",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#reproducible-research-1",
+    "href": "session1b-concepts-spatial-data-science.html#reproducible-research-1",
+    "title": "Spatial Data Science with R",
+    "section": "Reproducible Research",
+    "text": "Reproducible Research\n\n\n\nThere are four key elements of reproducible research:\n\ndata documentation\ndata publication\ncode publication,\noutput publication.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#tools-for-spatial-data-science",
+    "href": "session1b-concepts-spatial-data-science.html#tools-for-spatial-data-science",
+    "title": "Spatial Data Science with R",
+    "section": "Tools for Spatial Data Science",
+    "text": "Tools for Spatial Data Science\n\n\n\nGIS related\nData Science related\nSpatial Data Science related\n\n\nR is the best spatial data science tool available for public health !!!\n\n R provides a range of powerful packages for geospatial analysis, enabling advanced computations and analytics.",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#r-spatial-analysis-ecosystem",
+    "href": "session1b-concepts-spatial-data-science.html#r-spatial-analysis-ecosystem",
+    "title": "Spatial Data Science with R",
+    "section": "R Spatial Analysis Ecosystem",
+    "text": "R Spatial Analysis Ecosystem\n\n\n\n\nCRAN Task View - Spatial Analysis\n\n\n\n\n\n\nhttps://cran.r-project.org/web/views/Spatial.html",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "session1b-concepts-spatial-data-science.html#r-spatial-learning-resources",
+    "href": "session1b-concepts-spatial-data-science.html#r-spatial-learning-resources",
+    "title": "Spatial Data Science with R",
+    "section": "R Spatial Learning Resources",
+    "text": "R Spatial Learning Resources\n\n\n\nWealth of Resource material\nPowerful tools/packages\nseamlessly handle vector and raster data\ninractive visualization\nend-to-end solution\n\n \nNewest addition: Spatial Data Science: With Applications in R",
+    "crumbs": [
+      "Home",
+      "Session-I · Foundations",
+      "Concepts in Spatial Data Science"
+    ]
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#what-is-esda",
+    "href": "slides-session2-2-esda.html#what-is-esda",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "What is ESDA?",
+    "text": "What is ESDA?\n\nThe spatial extension of Tukey’s exploratory data analysis.\nDescribe and visualise spatial distributions, find atypical locations, and reveal patterns of spatial association and heterogeneity (Anselin, 1999).\nIt is hypothesis-generating, not hypothesis-testing.\n\n\n\nESDA sits at the front of the workflow, before any spatial model."
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#why-spatial-data-needs-its-own-eda",
+    "href": "slides-session2-2-esda.html#why-spatial-data-needs-its-own-eda",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Why spatial data needs its own EDA",
+    "text": "Why spatial data needs its own EDA\nOrdinary EDA assumes observations are independent. Spatial data usually are not.\n\nSpatial dependence: near things are more related than distant things (Tobler’s First Law, 1970).\nSpatial heterogeneity: distributions and relationships change across space."
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#two-cautions",
+    "href": "slides-session2-2-esda.html#two-cautions",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Two cautions",
+    "text": "Two cautions\n\nModifiable Areal Unit Problem (MAUP): results depend on how areas are bounded and aggregated.\nEcological fallacy: an area-level pattern need not hold for individuals within the area.\n\nName both when you present a map."
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#exploratory-vs-confirmatory",
+    "href": "slides-session2-2-esda.html#exploratory-vs-confirmatory",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Exploratory vs Confirmatory",
+    "text": "Exploratory vs Confirmatory\n\nESDA (now): descriptive, visual, generates hypotheses about where and how values cluster or differ.\nConfirmatory (later): spatial regression / econometrics tests those hypotheses (Anselin, 1988; Haining, 2003).\n\nKeep the two stages separate."
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#a-short-history",
+    "href": "slides-session2-2-esda.html#a-short-history",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "A short history",
+    "text": "A short history\n\nTukey (1977): exploratory data analysis as visual, hypothesis-free description.\nOpenshaw et al. (1987): the Geographical Analysis Machine, automated cluster search.\nInteractive graphics: REGARD, MANET, maps linked to plots (Bailey & Gatrell, 1995).\nSoftware: SpaceStat, then GeoDa (Anselin et al., 2006), and spdep in R."
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#core-esda-three-ways-of-looking",
+    "href": "slides-session2-2-esda.html#core-esda-three-ways-of-looking",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Core ESDA: three ways of looking",
+    "text": "Core ESDA: three ways of looking\n\nMap the spatial distribution (the choropleth from the previous section).\nLink plots to the map: brush a box plot or scatter plot and the same areas highlight.\nSpot atypical locations: a value unlike its neighbours is a spatial outlier.\n\nThese lead to one question: is there spatial pattern at all?"
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#neighbours-and-the-spatial-lag",
+    "href": "slides-session2-2-esda.html#neighbours-and-the-spatial-lag",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Neighbours and the spatial lag",
+    "text": "Neighbours and the spatial lag\n\nTo make a method spatial, encode geography as a spatial weights matrix W: who is a neighbour, and how strongly.\nThe spatial lag of a variable is the (weighted) average of its neighbours.\nPlotting a value against its spatial lag is the first quantitative ESDA step."
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#global-autocorrelation-by-hand",
+    "href": "slides-session2-2-esda.html#global-autocorrelation-by-hand",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Global autocorrelation, by hand",
+    "text": "Global autocorrelation, by hand\nRun this in R and change the values: watch Moran’s I move from independence (near 0) toward clustering (toward +1).\n\n# Four regions in a row: 1-2-3-4\ny &lt;- c(2, 3, 8, 9)                       # try c(2, 9, 3, 8) for a \"checkerboard\"\n\nW &lt;- matrix(c(0,1,0,0,\n              1,0,1,0,\n              0,1,0,1,\n              0,0,1,0), nrow = 4, byrow = TRUE)   # who neighbours whom\nWr &lt;- W / rowSums(W)                     # row-standardised weights\n\nz   &lt;- y - mean(y)                       # centre the values\nlag &lt;- as.vector(Wr %*% y)               # spatial lag = neighbour average\nlag\n\n[1] 3 5 6 8\n\nmoran_I &lt;- sum(z * (Wr %*% z)) / sum(z^2)\nmoran_I                                  # global Moran's I\n\n[1] 0.5405405\n\n\n\n\nWe introduce live, in-browser webR cells (runnable here, embeddable in Moodle as iframes) in Session-III."
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#reading-global-morans-i",
+    "href": "slides-session2-2-esda.html#reading-global-morans-i",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Reading global Moran’s I",
+    "text": "Reading global Moran’s I\n\nI &gt; 0: similar values sit together (clustering of highs and of lows).\nI ≈ 0: no spatial pattern (spatial randomness).\nI &lt; 0: neighbours are dissimilar (a checkerboard).\n\nIt answers yes/no, is there pattern. It does not say where."
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#esda-in-public-health",
+    "href": "slides-session2-2-esda.html#esda-in-public-health",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "ESDA in public health",
+    "text": "ESDA in public health\n\nMap disease rates, flag candidate hot spots, and form hypotheses about drivers before modelling (Delmelle & Kanaroglou, 2013).\nCentral to surveillance: which areas may be at risk?\nExtends to space and time (for example, dengue across districts of Punjab, India).\nConnects directly to NFHS and notification data at district / facility level."
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#what-comes-next-later-session",
+    "href": "slides-session2-2-esda.html#what-comes-next-later-session",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "What comes next (later session)",
+    "text": "What comes next (later session)\n\nFrom one global number to local indicators that say where the clusters are: local Moran’s I and the LISA map, and Getis-Ord hot spots (Anselin, 1995).\nThat is the Spatial Data Analysis & Clustering session. We stop here, at the exploratory stage."
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#key-references",
+    "href": "slides-session2-2-esda.html#key-references",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Key references",
+    "text": "Key references\n\nTukey, J.W. (1977). Exploratory Data Analysis. Addison-Wesley.\nTobler, W. (1970). A computer movie simulating urban growth. Economic Geography 46.\nAnselin, L. (1988). Spatial Econometrics. Kluwer.\nAnselin, L. (1999). Interactive techniques and ESDA. In Geographical Information Systems.\nBailey, T.C. & Gatrell, A.C. (1995). Interactive Spatial Data Analysis. Longman.\nHaining, R. (2003). Spatial Data Analysis: Theory and Practice. Cambridge.\nAnselin, Syabri & Kho (2006). GeoDa. Geographical Analysis 38."
+  },
+  {
+    "objectID": "slides-session2-2-esda.html#recap",
+    "href": "slides-session2-2-esda.html#recap",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Recap",
+    "text": "Recap\n\nESDA spatialises EDA and is hypothesis-generating.\nSpatial data is special: dependence and heterogeneity; mind MAUP and the ecological fallacy.\nLook three ways (map, link, spot outliers), then ask global Moran’s I: is there pattern?\nWhere the clusters are comes next, with LISA."
+  },
+  {
+    "objectID": "session2-2-esda.html",
+    "href": "session2-2-esda.html",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "",
+    "text": "The spatial extension of Tukey’s exploratory data analysis.\nDescribe and visualise spatial distributions, find atypical locations, and reveal patterns of spatial association and heterogeneity (Anselin, 1999).\nIt is hypothesis-generating, not hypothesis-testing.\n\n\n\nESDA sits at the front of the workflow, before any spatial model.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#what-is-esda",
+    "href": "session2-2-esda.html#what-is-esda",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "",
+    "text": "The spatial extension of Tukey’s exploratory data analysis.\nDescribe and visualise spatial distributions, find atypical locations, and reveal patterns of spatial association and heterogeneity (Anselin, 1999).\nIt is hypothesis-generating, not hypothesis-testing.\n\n\n\nESDA sits at the front of the workflow, before any spatial model.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#why-spatial-data-needs-its-own-eda",
+    "href": "session2-2-esda.html#why-spatial-data-needs-its-own-eda",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Why spatial data needs its own EDA",
+    "text": "Why spatial data needs its own EDA\nOrdinary EDA assumes observations are independent. Spatial data usually are not.\n\nSpatial dependence: near things are more related than distant things (Tobler’s First Law, 1970).\nSpatial heterogeneity: distributions and relationships change across space.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#two-cautions",
+    "href": "session2-2-esda.html#two-cautions",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Two cautions",
+    "text": "Two cautions\n\nModifiable Areal Unit Problem (MAUP): results depend on how areas are bounded and aggregated.\nEcological fallacy: an area-level pattern need not hold for individuals within the area.\n\nName both when you present a map.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#exploratory-vs-confirmatory",
+    "href": "session2-2-esda.html#exploratory-vs-confirmatory",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Exploratory vs Confirmatory",
+    "text": "Exploratory vs Confirmatory\n\nESDA (now): descriptive, visual, generates hypotheses about where and how values cluster or differ.\nConfirmatory (later): spatial regression / econometrics tests those hypotheses (Anselin, 1988; Haining, 2003).\n\nKeep the two stages separate.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#a-short-history",
+    "href": "session2-2-esda.html#a-short-history",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "A short history",
+    "text": "A short history\n\nTukey (1977): exploratory data analysis as visual, hypothesis-free description.\nOpenshaw et al. (1987): the Geographical Analysis Machine, automated cluster search.\nInteractive graphics: REGARD, MANET, maps linked to plots (Bailey & Gatrell, 1995).\nSoftware: SpaceStat, then GeoDa (Anselin et al., 2006), and spdep in R.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#core-esda-three-ways-of-looking",
+    "href": "session2-2-esda.html#core-esda-three-ways-of-looking",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Core ESDA: three ways of looking",
+    "text": "Core ESDA: three ways of looking\n\nMap the spatial distribution (the choropleth from the previous section).\nLink plots to the map: brush a box plot or scatter plot and the same areas highlight.\nSpot atypical locations: a value unlike its neighbours is a spatial outlier.\n\nThese lead to one question: is there spatial pattern at all?",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#neighbours-and-the-spatial-lag",
+    "href": "session2-2-esda.html#neighbours-and-the-spatial-lag",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Neighbours and the spatial lag",
+    "text": "Neighbours and the spatial lag\n\nTo make a method spatial, encode geography as a spatial weights matrix W: who is a neighbour, and how strongly.\nThe spatial lag of a variable is the (weighted) average of its neighbours.\nPlotting a value against its spatial lag is the first quantitative ESDA step.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#global-autocorrelation-by-hand",
+    "href": "session2-2-esda.html#global-autocorrelation-by-hand",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Global autocorrelation, by hand",
+    "text": "Global autocorrelation, by hand\nRun this in R and change the values: watch Moran’s I move from independence (near 0) toward clustering (toward +1).\n\n# Four regions in a row: 1-2-3-4\ny &lt;- c(2, 3, 8, 9)                       # try c(2, 9, 3, 8) for a \"checkerboard\"\n\nW &lt;- matrix(c(0,1,0,0,\n              1,0,1,0,\n              0,1,0,1,\n              0,0,1,0), nrow = 4, byrow = TRUE)   # who neighbours whom\nWr &lt;- W / rowSums(W)                     # row-standardised weights\n\nz   &lt;- y - mean(y)                       # centre the values\nlag &lt;- as.vector(Wr %*% y)               # spatial lag = neighbour average\nlag\n\n[1] 3 5 6 8\n\nmoran_I &lt;- sum(z * (Wr %*% z)) / sum(z^2)\nmoran_I                                  # global Moran's I\n\n[1] 0.5405405\n\n\n\n\nWe introduce live, in-browser webR cells (runnable here, embeddable in Moodle as iframes) in Session-III.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#reading-global-morans-i",
+    "href": "session2-2-esda.html#reading-global-morans-i",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Reading global Moran’s I",
+    "text": "Reading global Moran’s I\n\nI &gt; 0: similar values sit together (clustering of highs and of lows).\nI ≈ 0: no spatial pattern (spatial randomness).\nI &lt; 0: neighbours are dissimilar (a checkerboard).\n\nIt answers yes/no, is there pattern. It does not say where.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#esda-in-public-health",
+    "href": "session2-2-esda.html#esda-in-public-health",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "ESDA in public health",
+    "text": "ESDA in public health\n\nMap disease rates, flag candidate hot spots, and form hypotheses about drivers before modelling (Delmelle & Kanaroglou, 2013).\nCentral to surveillance: which areas may be at risk?\nExtends to space and time (for example, dengue across districts of Punjab, India).\nConnects directly to NFHS and notification data at district / facility level.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#what-comes-next-later-session",
+    "href": "session2-2-esda.html#what-comes-next-later-session",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "What comes next (later session)",
+    "text": "What comes next (later session)\n\nFrom one global number to local indicators that say where the clusters are: local Moran’s I and the LISA map, and Getis-Ord hot spots (Anselin, 1995).\nThat is the Spatial Data Analysis & Clustering session. We stop here, at the exploratory stage.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#key-references",
+    "href": "session2-2-esda.html#key-references",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Key references",
+    "text": "Key references\n\nTukey, J.W. (1977). Exploratory Data Analysis. Addison-Wesley.\nTobler, W. (1970). A computer movie simulating urban growth. Economic Geography 46.\nAnselin, L. (1988). Spatial Econometrics. Kluwer.\nAnselin, L. (1999). Interactive techniques and ESDA. In Geographical Information Systems.\nBailey, T.C. & Gatrell, A.C. (1995). Interactive Spatial Data Analysis. Longman.\nHaining, R. (2003). Spatial Data Analysis: Theory and Practice. Cambridge.\nAnselin, Syabri & Kho (2006). GeoDa. Geographical Analysis 38.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "session2-2-esda.html#recap",
+    "href": "session2-2-esda.html#recap",
+    "title": "Exploratory Spatial Data Analysis (ESDA)",
+    "section": "Recap",
+    "text": "Recap\n\nESDA spatialises EDA and is hypothesis-generating.\nSpatial data is special: dependence and heterogeneity; mind MAUP and the ecological fallacy.\nLook three ways (map, link, spot outliers), then ask global Moran’s I: is there pattern?\nWhere the clusters are comes next, with LISA.",
+    "crumbs": [
+      "Home",
+      "Session-II · ESDA",
+      "Exploratory Spatial Data Analysis"
+    ]
+  },
+  {
+    "objectID": "setup.html",
+    "href": "setup.html",
+    "title": "Setup & Prerequisites",
+    "section": "",
+    "text": "Complete this before the workshop. Allow about 30–45 minutes, plus download time for the spatial data.",
+    "crumbs": [
+      "Home",
+      "Reference",
+      "Setup"
+    ]
+  },
+  {
+    "objectID": "setup.html#software",
+    "href": "setup.html#software",
+    "title": "Setup & Prerequisites",
+    "section": "1. Software",
+    "text": "1. Software\n\nR ≥ 4.3: https://cran.rstudio.com/\nRStudio (latest): https://posit.co/downloads/\nHardware: 8 GB RAM or more (16 GB preferred), stable internet.",
+    "crumbs": [
+      "Home",
+      "Reference",
+      "Setup"
+    ]
+  },
+  {
+    "objectID": "setup.html#r-packages",
+    "href": "setup.html#r-packages",
+    "title": "Setup & Prerequisites",
+    "section": "2. R packages",
+    "text": "2. R packages\nRun the bundled install script once:\nsource(\"resources/install_required_packages.R\")\nIt installs: tidyverse, here, patchwork, janitor, rio, sf, ggspatial, raster, exactextractr, tidygeocoder, leaflet, mapview, spdep, rgeoda, HistData.\n\n\n\n\n\n\nWarningSystem dependencies for sf\n\n\n\nsf, rgeoda and exactextractr need GDAL, GEOS and PROJ. On macOS: brew install gdal geos proj. On Ubuntu: apt install libgdal-dev libgeos-dev libproj-dev. On Windows the CRAN binaries include these, so no extra steps.",
+    "crumbs": [
+      "Home",
+      "Reference",
+      "Setup"
+    ]
+  },
+  {
+    "objectID": "setup.html#project-data",
+    "href": "setup.html#project-data",
+    "title": "Setup & Prerequisites",
+    "section": "3. Project & data",
+    "text": "3. Project & data\n\nOpen Module2_SpatialEpi.Rproj in RStudio. This sets the working directory so every here() path resolves.\nThe spatial data is in spatial_files/ and data/ (already in the repo). If you cloned without the large files, re-extract spatial_files.zip into the project root.",
+    "crumbs": [
+      "Home",
+      "Reference",
+      "Setup"
+    ]
+  },
+  {
+    "objectID": "setup.html#pre-flight-check",
+    "href": "setup.html#pre-flight-check",
+    "title": "Setup & Prerequisites",
+    "section": "4. Pre-flight check",
+    "text": "4. Pre-flight check\nlibrary(sf); library(tidyverse); library(here)\n# prints the number of India state polygons:\nsf::st_read(here(\"spatial_files\", \"India_State_Boundary.shp\")) |&gt; nrow()\nA non-zero row count means you are ready. See GIS-basics.pdf for a primer, and resources/prerequisites.qmd for more detail.",
+    "crumbs": [
+      "Home",
+      "Reference",
+      "Setup"
+    ]
+  }
+]
